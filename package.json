@@ -1,0 +1,39 @@
+{
+  "name": "restaurant-saas",
+  "private": true,
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "turbo build --filter=@restaurant/api... && vitest run --config vitest.integration.config.ts",
+    "db:generate": "pnpm --filter @restaurant/database generate",
+    "db:validate": "pnpm --filter @restaurant/database validate",
+    "db:migrate": "pnpm --filter @restaurant/database migrate",
+    "db:seed": "pnpm --filter @restaurant/database seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "@types/supertest": "^6.0.3",
+    "dotenv": "^17.2.3",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^9.39.0",
+    "jsdom": "^30.1.3",
+    "pg": "^8.16.3",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
+  }
+}

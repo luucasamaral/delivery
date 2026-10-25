@@ -1,0 +1,1128 @@
+# PROMPT MESTRE — DESENVOLVIMENTO DE SAAS PARA RESTAURANTES
+
+## 1. SEU PAPEL
+
+Você será meu arquiteto de software, engenheiro full-stack sênior, especialista em SaaS multi-tenant, segurança, banco de dados, sistemas de PDV e aplicações comerciais.
+
+Vamos desenvolver juntos, do zero, uma plataforma SaaS profissional para restaurantes, hamburguerias, pizzarias, lanchonetes, cafeterias e estabelecimentos alimentícios.
+
+O objetivo não é criar apenas um protótipo ou uma interface visual. Quero construir um **produto real, escalável, seguro, comercializável e preparado para operação em produção**.
+
+Você deverá me acompanhar durante todo o desenvolvimento, explicando decisões técnicas importantes, propondo melhorias e implementando cada módulo de maneira organizada.
+
+Não quero soluções improvisadas, dados fictícios em funcionalidades concluídas ou implementações que precisem ser totalmente reescritas posteriormente.
+
+---
+
+# 2. VISÃO GERAL DO PRODUTO
+
+O sistema será uma plataforma SaaS multi-tenant, onde vários restaurantes poderão contratar uma licença mensal para utilizar o software.
+
+Cada restaurante terá seu próprio ambiente, incluindo:
+
+- Painel administrativo.
+- Sistema de PDV.
+- Gerenciamento de pedidos.
+- Cardápio digital.
+- Delivery e retirada.
+- Atendimento presencial.
+- Mesas e comandas.
+- Cozinha e preparação de pedidos.
+- Controle de caixa.
+- Clientes e histórico.
+- Relatórios.
+- Funcionários e permissões.
+- Configurações próprias.
+
+Também existirá um **Super Admin**, exclusivo para o proprietário da plataforma, responsável por gerenciar restaurantes, planos, licenças, assinaturas, cobranças e bloqueios.
+
+O sistema será prioritariamente Web, mas deverá ser preparado para funcionar como PWA em computadores Windows, tablets e smartphones.
+
+Cada restaurante poderá utilizar um endereço como:
+
+- `app.dominio.com` — Painel do restaurante.
+- `admin.dominio.com` — Super Admin.
+- `pedido.dominio.com/nomedorestaurante` — Cardápio digital.
+
+Os domínios são exemplos e deverão ser configuráveis.
+
+A arquitetura deverá permitir futuramente domínios personalizados para restaurantes.
+
+---
+
+# 3. STACK TECNOLÓGICA
+
+Utilizar preferencialmente:
+
+## Frontend
+
+- Next.js com App Router.
+- React.
+- TypeScript.
+- Tailwind CSS.
+- shadcn/ui.
+- Lucide Icons.
+- TanStack Query para gerenciamento de dados remotos.
+- React Hook Form.
+- Zod para validação.
+- Zustand somente quando necessário para estado compartilhado.
+
+## Backend
+
+- Node.js.
+- NestJS.
+- TypeScript.
+- REST API.
+- Socket.IO para comunicação em tempo real.
+- Redis.
+- BullMQ para filas e tarefas assíncronas.
+- Swagger/OpenAPI para documentação.
+
+## Banco de dados
+
+- PostgreSQL.
+- Prisma ORM.
+- Migrations versionadas.
+- Transações para operações críticas.
+- Índices e restrições de integridade.
+- Row-Level Security, quando tecnicamente apropriado, como proteção adicional.
+
+## Infraestrutura
+
+- Docker.
+- Docker Compose.
+- Nginx ou proxy reverso equivalente.
+- Armazenamento de arquivos compatível com S3.
+- Variáveis de ambiente.
+- Logs estruturados.
+- Monitoramento de erros.
+- Backup automatizado.
+- Pipeline de CI/CD futuramente.
+
+## Arquitetura
+
+Utilizar um monorepo com pnpm workspaces e Turborepo.
+
+Estrutura inicial:
+
+```text
+restaurant-saas/
+├── apps/
+│   ├── admin/
+│   ├── dashboard/
+│   ├── storefront/
+│   └── api/
+│
+├── packages/
+│   ├── ui/
+│   ├── database/
+│   ├── types/
+│   └── config/
+│
+├── infrastructure/
+│   ├── docker/
+│   └── nginx/
+│
+├── docs/
+├── package.json
+├── pnpm-workspace.yaml
+└── turbo.json
+```
+
+Utilizar monólito modular no backend. Não implementar microsserviços inicialmente.
+
+---
+
+# 4. MULTI-TENANCY
+
+O sistema deverá atender vários restaurantes utilizando a mesma infraestrutura.
+
+Cada restaurante será representado por um `tenant`.
+
+Requisitos:
+
+1. Cada restaurante possuirá identificação única.
+2. Cada restaurante terá seus próprios produtos, clientes, pedidos, funcionários e configurações.
+3. Um restaurante nunca poderá acessar informações de outro.
+4. O backend deverá validar o contexto do tenant em todas as operações.
+5. Nunca confiar diretamente em um `tenant_id` enviado pelo frontend.
+6. O sistema deverá permitir múltiplas unidades por restaurante.
+7. Um usuário poderá possuir vínculos com diferentes restaurantes, mediante autorização.
+8. Implementar testes automatizados de isolamento entre tenants.
+9. Usar índices e chaves estrangeiras que reforcem o isolamento entre restaurantes e unidades.
+10. Preparar arquitetura para crescimento sem exigir um banco individual para cada cliente.
+
+O banco será inicialmente compartilhado, utilizando `tenant_id` nas entidades pertinentes.
+
+---
+
+# 5. SISTEMA DE AUTENTICAÇÃO E PERMISSÕES
+
+Implementar autenticação segura.
+
+Perfis previstos:
+
+- Super Admin.
+- Proprietário.
+- Gerente.
+- Caixa.
+- Atendente.
+- Garçom.
+- Cozinha.
+- Entregador.
+
+Cada perfil terá permissões específicas.
+
+Exemplos:
+
+O proprietário poderá acessar todas as funcionalidades autorizadas pelo plano.
+
+O gerente poderá administrar pedidos, produtos, funcionários e relatórios conforme permissões.
+
+O caixa poderá registrar vendas, receber pagamentos e operar sessões de caixa.
+
+O garçom poderá visualizar mesas, abrir comandas e lançar produtos.
+
+A cozinha poderá visualizar pedidos de preparação e atualizar seu andamento.
+
+O entregador poderá consultar suas entregas atribuídas.
+
+Requisitos de segurança:
+
+- Senhas protegidas com Argon2id ou alternativa segura.
+- Cookies HttpOnly e Secure quando aplicável.
+- Proteção contra CSRF conforme o modelo de autenticação.
+- Rate limiting.
+- Recuperação de senha.
+- Revogação de sessões.
+- Controle de permissões no backend.
+- Auditoria de ações críticas.
+- Nunca expor senhas, tokens ou segredos nos logs.
+
+---
+
+# 6. PAINEL DO RESTAURANTE
+
+Criar um painel moderno, responsivo e organizado.
+
+## Dashboard
+
+Exibir:
+
+- Faturamento do dia.
+- Quantidade de pedidos.
+- Pedidos pendentes.
+- Pedidos em preparação.
+- Pedidos concluídos.
+- Ticket médio.
+- Vendas por canal.
+- Produtos mais vendidos.
+- Indicadores de desempenho.
+
+Utilizar dados reais da API, sem indicadores fictícios em funcionalidades concluídas.
+
+## Navegação
+
+O menu lateral deverá incluir:
+
+- Dashboard.
+- PDV.
+- Pedidos.
+- Mesas.
+- Comandas.
+- Cozinha.
+- Cardápio.
+- Clientes.
+- Entregas.
+- Caixa.
+- Financeiro.
+- Relatórios.
+- Funcionários.
+- Configurações.
+- Minha assinatura.
+
+A navegação deverá respeitar permissões e recursos contratados.
+
+---
+
+# 7. PDV — PONTO DE VENDA
+
+Desenvolver um PDV Web rápido, intuitivo e adequado a computadores com mouse, teclado ou tela sensível ao toque.
+
+Funcionalidades:
+
+- Pesquisa de produtos.
+- Navegação por categorias.
+- Adição de produtos ao carrinho.
+- Seleção de variações e adicionais.
+- Quantidade.
+- Observações.
+- Descontos autorizados.
+- Acréscimos.
+- Identificação do cliente.
+- Venda de balcão.
+- Retirada.
+- Delivery lançado pelo atendente.
+- Associação a mesa ou comanda.
+- Pagamento em dinheiro.
+- Pix.
+- Cartão de débito.
+- Cartão de crédito.
+- Pagamento misto.
+- Cálculo de troco.
+- Cancelamento autorizado.
+- Impressão de comprovante não fiscal.
+
+O PDV deverá funcionar com o mesmo motor de pedidos utilizado pelo delivery e pelas mesas.
+
+Preparar suporte futuro a atalhos de teclado, leitor de código de barras e operação offline limitada.
+
+Não implementar emissão fiscal sem um módulo fiscal próprio e validação dos requisitos legais aplicáveis.
+
+---
+
+# 8. CARDÁPIO DIGITAL
+
+Cada restaurante terá um cardápio público acessível por URL.
+
+## Página principal
+
+Exibir:
+
+- Logo.
+- Imagem de capa.
+- Nome do restaurante.
+- Descrição.
+- Horário de funcionamento.
+- Status aberto ou fechado.
+- Categorias.
+- Produtos.
+- Imagens.
+- Preços.
+- Busca.
+- Informações de entrega.
+
+## Produto
+
+Ao selecionar um produto, o cliente poderá:
+
+- Visualizar descrição.
+- Selecionar variações.
+- Escolher adicionais.
+- Informar observações.
+- Alterar quantidade.
+- Adicionar ao carrinho.
+
+## Carrinho
+
+Permitir:
+
+- Revisar produtos.
+- Alterar quantidades.
+- Remover itens.
+- Aplicar cupom, quando disponível.
+- Visualizar subtotal.
+- Visualizar taxa de entrega.
+- Visualizar descontos.
+- Visualizar total.
+
+## Checkout
+
+Coletar:
+
+- Nome do cliente.
+- Telefone.
+- Endereço, quando necessário.
+- Referência de entrega.
+- Tipo de atendimento.
+- Forma de pagamento.
+- Troco, quando aplicável.
+- Observações.
+
+Tipos de atendimento:
+
+- Delivery.
+- Retirada no estabelecimento.
+
+Após a finalização, criar o pedido na API e apresentar um identificador de acompanhamento.
+
+O backend deverá recalcular preços, taxas e descontos, sem confiar nos valores enviados pelo navegador.
+
+O cliente deverá conseguir acompanhar o status do pedido.
+
+Implementar mecanismos contra spam e criação duplicada de pedidos.
+
+---
+
+# 9. CENTRAL DE PEDIDOS
+
+Criar uma central operacional em tempo real.
+
+Tipos de pedidos:
+
+- Delivery.
+- Retirada.
+- Balcão.
+- Mesa.
+- Comanda.
+
+Status previstos:
+
+- Pendente.
+- Aceito.
+- Em preparação.
+- Pronto.
+- Saiu para entrega.
+- Entregue.
+- Concluído.
+- Cancelado.
+
+Os status e suas transições deverão respeitar o tipo de atendimento.
+
+Exemplo: um pedido de mesa não precisa passar pelo status "saiu para entrega".
+
+Funcionalidades:
+
+- Notificação de novo pedido.
+- Alerta sonoro.
+- Aceitar pedido.
+- Recusar pedido.
+- Informar motivo de cancelamento.
+- Atualizar preparação.
+- Filtrar por status.
+- Filtrar por canal.
+- Consultar histórico.
+- Visualizar detalhes.
+- Reimprimir comanda.
+- Registrar usuário responsável pelas ações.
+
+Utilizar WebSocket para notificações.
+
+O banco de dados será a fonte de verdade. Em caso de reconexão, o frontend deverá sincronizar os pedidos pela API.
+
+---
+
+# 10. MESAS E COMANDAS
+
+O restaurante poderá configurar seu salão.
+
+## Mesas
+
+Permitir:
+
+- Cadastrar mesas.
+- Definir número.
+- Definir capacidade.
+- Organizar por ambientes.
+- Visualizar disponibilidade.
+- Abrir atendimento.
+- Adicionar pedidos.
+- Consultar consumo.
+- Transferir atendimento, mediante regras.
+- Fechar conta.
+- Liberar mesa.
+
+Status visuais:
+
+- Livre.
+- Ocupada.
+- Aguardando pagamento.
+- Indisponível.
+
+## Comandas
+
+Permitir:
+
+- Abrir comanda.
+- Gerar identificação.
+- Associar cliente opcionalmente.
+- Adicionar produtos.
+- Consultar consumo.
+- Registrar pagamentos.
+- Encerrar comanda.
+
+## Modelagem
+
+Separar:
+
+- Pedido (`order`).
+- Conta (`check`).
+- Mesa (`restaurant_table`).
+- Sessão de mesa (`table_session`).
+- Comanda (`tab`).
+- Pagamento (`payment`).
+
+Uma conta poderá agrupar vários pedidos.
+
+A arquitetura deverá permitir futuramente dividir contas e realizar pagamentos parciais.
+
+Evitar que duas operações simultâneas fechem a mesma conta ou cobrem o mesmo valor indevidamente.
+
+---
+
+# 11. COZINHA — KDS
+
+Criar uma tela específica para cozinha.
+
+Funcionalidades:
+
+- Receber pedidos aceitos.
+- Exibir itens para preparação.
+- Organizar por horário.
+- Destacar pedidos atrasados.
+- Iniciar preparação.
+- Marcar itens ou pedidos como prontos.
+- Exibir observações.
+- Identificar origem do pedido.
+- Emitir alertas.
+
+Preparar suporte futuro a múltiplos setores:
+
+- Cozinha.
+- Chapa.
+- Bar.
+- Pizzaria.
+- Sobremesas.
+
+O KDS não deverá expor dados financeiros desnecessários.
+
+---
+
+# 12. IMPRESSÃO TÉRMICA
+
+Preparar o sistema para impressoras térmicas utilizadas em restaurantes.
+
+Primeira implementação:
+
+- Impressão manual pelo navegador.
+- Layout de comanda.
+- Identificação do pedido.
+- Itens e adicionais.
+- Observações.
+- Data e horário.
+- Origem do pedido.
+
+Evolução futura:
+
+Desenvolver um agente local para Windows responsável pela impressão automática.
+
+Requisitos futuros:
+
+- Suporte a impressoras ESC/POS compatíveis.
+- Configuração de impressoras.
+- Impressão por setor.
+- Fila de impressão.
+- Retentativas.
+- Registro de falhas.
+- Identificação de reimpressões.
+- Autenticação do dispositivo.
+
+Não depender exclusivamente de WebSocket para garantir a entrega dos trabalhos de impressão.
+
+---
+
+# 13. CAIXA E FINANCEIRO
+
+## Controle de caixa
+
+Implementar:
+
+- Abertura de caixa.
+- Saldo inicial.
+- Registro de vendas.
+- Entradas.
+- Sangrias.
+- Suprimentos.
+- Fechamento.
+- Conferência de valores.
+- Diferenças de caixa.
+- Histórico por operador.
+
+## Pagamentos
+
+Métodos:
+
+- Dinheiro.
+- Pix.
+- Débito.
+- Crédito.
+- Outros configuráveis.
+
+Separar pagamento informado manualmente de pagamento confirmado por gateway.
+
+Preparar integração futura com provedores brasileiros de pagamento.
+
+## Relatórios
+
+Prever:
+
+- Vendas por período.
+- Vendas por canal.
+- Vendas por forma de pagamento.
+- Ticket médio.
+- Produtos mais vendidos.
+- Cancelamentos.
+- Movimentações de caixa.
+
+---
+
+# 14. CLIENTES E DELIVERY
+
+## Clientes
+
+Cadastrar:
+
+- Nome.
+- Telefone.
+- Endereços.
+- Histórico de pedidos.
+- Observações operacionais.
+
+Aplicar princípios de minimização e proteção de dados pessoais conforme a LGPD.
+
+## Delivery
+
+Implementar:
+
+- Regiões de entrega.
+- Taxas configuráveis.
+- Pedido para entrega.
+- Endereço de destino.
+- Status de entrega.
+- Identificação de entregador, quando aplicável.
+
+Preparar funcionalidades futuras:
+
+- Painel do entregador.
+- Distribuição de entregas.
+- Acompanhamento.
+- Cálculo de taxas por distância.
+- Integração com mapas.
+
+---
+
+# 15. LICENCIAMENTO E ASSINATURAS MENSAIS
+
+Este módulo é obrigatório e fundamental para o modelo de negócio.
+
+A plataforma será comercializada mediante pagamento de mensalidade.
+
+Cada restaurante deverá possuir uma licença vinculada a um plano.
+
+## Planos
+
+Permitir criar planos com:
+
+- Nome.
+- Descrição.
+- Preço.
+- Periodicidade.
+- Quantidade máxima de unidades.
+- Limite de usuários.
+- Recursos disponíveis.
+- Status ativo ou inativo.
+
+Exemplos comerciais:
+
+- Start.
+- Pro.
+- Business.
+
+Os valores serão definidos posteriormente pelo Super Admin.
+
+## Assinaturas
+
+Cada assinatura deverá registrar:
+
+- Restaurante.
+- Plano.
+- Status.
+- Data de início.
+- Período atual.
+- Vencimento.
+- Período de tolerância.
+- Histórico de pagamentos.
+- Suspensões.
+- Reativações.
+
+Estados previstos:
+
+- TRIALING.
+- ACTIVE.
+- PAST_DUE.
+- SUSPENDED.
+- CANCELED.
+- EXPIRED.
+
+Diferenciar estado da assinatura, situação financeira e bloqueio administrativo.
+
+## Bloqueio automático
+
+O sistema deverá verificar assinaturas vencidas automaticamente.
+
+Exemplo de política:
+
+1. A licença está ativa enquanto o período contratado estiver válido.
+2. Ao vencer sem pagamento confirmado, entra em atraso.
+3. Durante três dias, permanece em tolerância.
+4. Após a tolerância, novas operações comerciais são bloqueadas.
+5. Após confirmação de pagamento, o acesso é restabelecido automaticamente, desde que não exista bloqueio administrativo.
+
+O período de tolerância deverá ser configurável.
+
+O bloqueio deve ocorrer no backend, não apenas na interface.
+
+Não confiar no relógio do navegador.
+
+O bloqueio deverá ser aplicado mesmo que o processo agendado de verificação tenha atrasado, calculando a permissão com base no estado persistido e nos períodos válidos.
+
+## Durante a suspensão
+
+Bloquear:
+
+- Novos pedidos online.
+- Novas vendas no PDV.
+- Novas comandas.
+- Novos atendimentos.
+- Alterações operacionais não autorizadas.
+
+Permitir:
+
+- Login.
+- Consulta de assinatura.
+- Regularização de pagamento.
+- Consulta de histórico.
+- Exportação de dados autorizados.
+- Conclusão segura de pedidos e contas iniciados anteriormente.
+
+O cardápio público deverá informar temporariamente que o estabelecimento não está recebendo novos pedidos, sem divulgar informações financeiras privadas.
+
+## Período de teste
+
+Permitir criar licenças gratuitas por determinado número de dias.
+
+Exemplos:
+
+- 7 dias.
+- 14 dias.
+- 30 dias.
+
+Após o período de teste, aplicar as regras de contratação ou suspensão.
+
+## Liberação manual
+
+O Super Admin poderá:
+
+- Ativar licença.
+- Suspender licença.
+- Reativar licença.
+- Estender vencimento.
+- Conceder cortesia.
+- Alterar plano.
+- Configurar período de teste.
+- Consultar histórico.
+
+Todas as ações deverão gerar registros de auditoria.
+
+## Gateway de pagamento
+
+Preparar arquitetura para integração com Asaas, Mercado Pago ou outro provedor compatível.
+
+Prever:
+
+- Cobrança recorrente.
+- Pix.
+- Boleto.
+- Cartão.
+- Webhooks.
+- Confirmação automática.
+- Conciliação.
+- Tratamento de falhas.
+
+Webhooks devem ser autenticados e processados de forma idempotente.
+
+Não armazenar dados sensíveis de cartão.
+
+A integração real com gateway será implementada em etapa posterior, utilizando credenciais de teste.
+
+---
+
+# 16. SUPER ADMIN
+
+Criar um painel exclusivo para administrar a plataforma SaaS.
+
+Funcionalidades:
+
+## Dashboard geral
+
+- Total de restaurantes.
+- Restaurantes ativos.
+- Restaurantes suspensos.
+- Assinaturas em teste.
+- Assinaturas vencidas.
+- Receita recorrente mensal.
+- Indicadores de crescimento.
+
+## Restaurantes
+
+- Cadastrar restaurante.
+- Editar dados.
+- Visualizar plano.
+- Consultar assinatura.
+- Ativar ou suspender.
+- Visualizar unidades.
+- Consultar histórico administrativo.
+
+## Planos
+
+- Criar planos.
+- Alterar preços.
+- Configurar limites.
+- Habilitar recursos.
+- Desativar planos.
+
+## Licenças
+
+- Consultar vencimentos.
+- Liberar cortesias.
+- Suspender.
+- Reativar.
+- Visualizar cobranças.
+- Consultar eventos.
+
+## Auditoria
+
+Registrar ações importantes, especialmente alterações de licenças, permissões e pagamentos.
+
+O Super Admin não deverá ter acesso indiscriminado a dados pessoais e financeiros operacionais dos restaurantes. Implementar acesso de suporte controlado e auditável quando necessário.
+
+---
+
+# 17. BANCO DE DADOS
+
+Projetar o banco de dados de forma normalizada e consistente.
+
+Entidades previstas:
+
+## Plataforma
+
+- tenants
+- branches
+- users
+- memberships
+- roles
+- permissions
+- tenant_settings
+- audit_logs
+
+## Assinaturas
+
+- plans
+- plan_features
+- subscriptions
+- invoices
+- payment_transactions
+- subscription_events
+- administrative_blocks
+
+## Cardápio
+
+- categories
+- products
+- product_images
+- product_prices
+- modifier_groups
+- modifier_options
+- product_modifier_groups
+- product_availability
+
+## Pedidos
+
+- orders
+- order_items
+- order_item_modifiers
+- order_status_history
+- order_adjustments
+
+## Atendimento presencial
+
+- dining_areas
+- restaurant_tables
+- table_sessions
+- checks
+- tabs
+- check_payments
+
+## Clientes
+
+- customers
+- customer_addresses
+
+## Delivery
+
+- delivery_zones
+- couriers
+- deliveries
+
+## Financeiro
+
+- payments
+- refunds
+- cash_sessions
+- cash_movements
+
+## Operação
+
+- print_jobs
+- outbox_events
+- notification_events
+
+Essas entidades são uma proposta inicial. Analise relacionamentos, cardinalidades e restrições antes de criar o schema definitivo.
+
+Utilizar UUIDs ou outro identificador robusto e adequado.
+
+Adicionar campos de auditoria e timestamps quando pertinentes.
+
+Dinheiro deve ser armazenado em centavos inteiros.
+
+Pedidos devem preservar snapshots dos produtos, adicionais e preços vendidos.
+
+Utilizar transações e controle de concorrência nas operações críticas.
+
+---
+
+# 18. DESIGN E EXPERIÊNCIA DO USUÁRIO
+
+Quero um sistema moderno, profissional e visualmente consistente.
+
+## Identidade visual
+
+- Interface limpa.
+- Layout moderno de SaaS.
+- Navegação lateral.
+- Componentes reutilizáveis.
+- Tipografia legível.
+- Ícones Lucide.
+- Cores consistentes.
+- Estados de carregamento.
+- Estados vazios.
+- Mensagens claras de erro e sucesso.
+- Responsividade.
+
+## Painel administrativo
+
+Priorizar produtividade e clareza.
+
+## PDV
+
+Priorizar velocidade, botões grandes e poucos cliques.
+
+## Cardápio digital
+
+Priorizar experiência mobile, imagens de produtos, rapidez e facilidade no checkout.
+
+## Cozinha
+
+Priorizar legibilidade, contraste, horários e status.
+
+Não construir interfaces isoladas com estilos diferentes. Criar um design system compartilhado.
+
+---
+
+# 19. REGRAS DE QUALIDADE
+
+Durante todo o desenvolvimento:
+
+1. Não criar soluções apenas para demonstrar funcionamento.
+2. Não utilizar dados mockados como substitutos de funcionalidades finalizadas.
+3. Não deixar endpoints críticos sem autenticação ou autorização.
+4. Não misturar regras de negócio com componentes visuais.
+5. Não duplicar lógica desnecessariamente.
+6. Não implementar funcionalidades fora da etapa atual sem autorização.
+7. Criar migrations para alterações no banco.
+8. Criar testes para regras críticas.
+9. Validar entradas no backend.
+10. Documentar decisões importantes.
+11. Implementar tratamento de erros.
+12. Evitar dependências desnecessárias.
+13. Priorizar segurança e manutenção.
+14. Manter compatibilidade entre frontend e API.
+15. Nunca declarar uma funcionalidade concluída sem validação.
+
+Criar testes de:
+
+- Isolamento multi-tenant.
+- Autorização.
+- Criação de pedidos.
+- Cálculo de valores.
+- Transições de status.
+- Concorrência no fechamento de contas.
+- Pagamentos duplicados.
+- Suspensão de licenças.
+- Renovação de assinaturas.
+- Processamento de webhooks.
+
+---
+
+# 20. PLANO DE DESENVOLVIMENTO
+
+Dividir o projeto nas seguintes fases:
+
+## Fase 1 — Fundação
+
+- Monorepo.
+- Configuração das aplicações.
+- Docker.
+- PostgreSQL.
+- Prisma.
+- Redis.
+- Autenticação.
+- Multi-tenancy.
+- Permissões.
+- Modelagem inicial de licenças.
+- Testes de isolamento.
+
+## Fase 2 — Gestão do restaurante
+
+- Cadastro de restaurantes.
+- Unidades.
+- Configurações.
+- Funcionários.
+- Categorias.
+- Produtos.
+- Adicionais.
+
+## Fase 3 — Cardápio e delivery
+
+- Cardápio público.
+- Carrinho.
+- Checkout.
+- Criação de pedidos.
+- Acompanhamento.
+
+## Fase 4 — Operação
+
+- Central de pedidos.
+- WebSocket.
+- Alertas.
+- KDS.
+- Impressão manual.
+
+## Fase 5 — Atendimento presencial
+
+- PDV.
+- Mesas.
+- Comandas.
+- Contas.
+- Pagamentos.
+- Caixa.
+
+## Fase 6 — Administração SaaS
+
+- Super Admin.
+- Planos.
+- Assinaturas.
+- Licenças.
+- Períodos de teste.
+- Bloqueio automático.
+- Liberação manual.
+
+## Fase 7 — Integrações
+
+- Gateway de pagamento.
+- Cobrança recorrente.
+- Webhooks.
+- Impressão automática.
+- Recursos avançados de delivery.
+
+## Fase 8 — Preparação para produção
+
+- Testes completos.
+- Revisão de segurança.
+- Monitoramento.
+- Backup e restauração.
+- Otimizações.
+- Documentação.
+- Deploy.
+- Validação com restaurante piloto.
+
+---
+
+# 21. INSTRUÇÕES DE EXECUÇÃO PARA O CODEX
+
+Quero que você trabalhe comigo de maneira incremental.
+
+Antes de iniciar qualquer fase:
+
+1. Analise o estado atual do repositório.
+2. Identifique o que já existe.
+3. Apresente o plano da etapa.
+4. Explique as decisões técnicas.
+5. Identifique riscos e dependências.
+6. Defina critérios de aceitação.
+
+Durante a implementação:
+
+1. Faça alterações pequenas e organizadas.
+2. Respeite a arquitetura estabelecida.
+3. Evite reescrever módulos sem necessidade.
+4. Utilize nomes consistentes.
+5. Mantenha documentação atualizada.
+6. Não exponha segredos ou credenciais.
+7. Não execute comandos destrutivos sem autorização.
+
+Após cada etapa:
+
+1. Execute testes disponíveis.
+2. Execute lint e verificação de tipos.
+3. Verifique migrations.
+4. Informe os arquivos criados e alterados.
+5. Explique como testar.
+6. Relate problemas pendentes.
+7. Sugira a próxima etapa.
+
+Nunca avance automaticamente para outra fase.
+
+---
+
+# 22. PRIMEIRA TAREFA
+
+Agora que você conhece a visão completa do produto, quero iniciar pela Fase 1.
+
+Primeiro, apresente:
+
+1. Uma análise da arquitetura proposta.
+2. Possíveis melhorias técnicas.
+3. Estrutura definitiva do monorepo.
+4. Diagrama conceitual dos módulos.
+5. Modelagem inicial do banco.
+6. Estratégia de autenticação.
+7. Estratégia de isolamento multi-tenant.
+8. Estratégia de validação de licenças.
+9. Plano de implementação da Fase 1.
+10. Critérios de aceitação.
+
+Depois dessa análise, implemente a fundação do projeto.
+
+A implementação inicial deve incluir:
+
+- Monorepo funcional.
+- Aplicações iniciais.
+- API NestJS.
+- Banco PostgreSQL.
+- Prisma configurado.
+- Redis configurado.
+- Docker Compose.
+- Autenticação inicial.
+- Contexto de tenant.
+- Controle básico de permissões.
+- Modelos iniciais de assinatura.
+- Seed de desenvolvimento.
+- Testes de isolamento.
+- Documentação de execução.
+
+**Não implemente ainda o PDV, o cardápio completo ou a central de pedidos.**
+
+Quero uma fundação sólida, bem organizada e pronta para receber os próximos módulos.
+
+Ao concluir a Fase 1, apresente um resumo técnico e aguarde minha autorização para continuar.
